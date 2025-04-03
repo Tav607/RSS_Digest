@@ -132,7 +132,3 @@ crontab -e
 - `telegram_utils.py` - Telegram发送功能
 - `run.sh` - 运行脚本
 - `setup.sh` - 初始安装脚本
-
-## 许可证
-
-MIT 

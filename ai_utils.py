@@ -15,7 +15,7 @@ class AIProcessor:
     """
     Class for processing content through AI models and generating summaries
     """
-    def __init__(self, api_key: str, model: str = "deepseek-v3-250324", base_url: str = "https://ark.cn-beijing.volces.com/api/v3"):
+    def __init__(self, api_key: str, model: str, base_url: str):
         """
         Initialize the AI processor
         
