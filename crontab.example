@@ -1,0 +1,10 @@
+# Run RSS digest every 8 hours at 00:00, 08:00, and 16:00
+0 */8 * * * cd /home/paladinllq/myrss/rss_digest && ./run.sh
+
+# Alternative: Run RSS digest at specific times
+# 0 8 * * * cd /home/paladinllq/myrss/rss_digest && ./run.sh --hours 24 # Daily morning digest
+# 0 18 * * * cd /home/paladinllq/myrss/rss_digest && ./run.sh --hours 10 # Evening digest
+
+# To install this crontab:
+# crontab -e
+# (paste these lines and save) 
