@@ -58,12 +58,12 @@ class AIProcessor:
             content_text += f"内容摘要: {self._truncate_content(entry['content'])}\n\n"
             
         prompt = f"""
-        请阅读以下汇集的RSS文章, 并根据所有文章的信息生成一篇全面的中文摘要总结。要求如下：
-        1. 以bullet point的形式输出, 每条bullet point不超过100字;
-        2. 每条bullet point之间紧凑排列, 不要添加额外空行;
-        3. 输出的内容应逻辑清晰、语言简洁、条理分明，能够准确反映所有文章的整体内容和精髓。
-        4. 这些内容都属于"{category}"类别。
-        5. 输出内容保持在约{word_limit}字以内。
+        请阅读以下RSS文章集合，基于所有内容生成一份结构化、简洁明了的中文摘要，要求如下：
+        1. 使用bullet point格式输出，每条不超过100字；
+        2. 所有bullet point之间不要留空行，排列紧凑；
+        3. 内容应信息密度高、语言简洁有力、条理清晰，准确反映整体信息和关键信息点；
+        4. 本次内容归属类别："{category}"；
+        5. 控制总字数约为**{word_limit}字以内**，确保摘要紧凑有效。
 
         RSS条目内容:
         {content_text}
@@ -73,10 +73,9 @@ class AIProcessor:
             payload = {
                 "model": self.model,
                 "messages": [
-                    {"role": "system", "content": "你是一位专业的新闻编辑，擅长总结新闻内容。"},
+                    {"role": "system", "content": "你是一位资深新闻编辑，擅长从大量资讯中提取核心信息，具备高度的语言概括能力与逻辑组织能力。"},
                     {"role": "user", "content": prompt}
                 ],
-                "temperature": 0.3,
                 "max_tokens": 1000
             }
             
