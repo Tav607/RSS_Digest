@@ -4,9 +4,9 @@
 import json
 import logging
 import os
-import requests
 import datetime
 from typing import Dict, List, Any, Union
+from openai import OpenAI
 
 # 创建命名记录器
 logger = logging.getLogger(__name__)
@@ -27,11 +27,10 @@ class AIProcessor:
         self.model = model
         self.api_key = api_key
         self.base_url = base_url
-        self.api_url = f"{base_url}/chat/completions"
-        self.headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {api_key}"
-        }
+        self.client = OpenAI(
+            base_url=base_url,
+            api_key=api_key
+        )
         
     def generate_category_summary(self, entries: List[Dict[Any, Any]], category: str, 
                                  language: str = None, word_limit: int = 500) -> str:
@@ -70,27 +69,19 @@ class AIProcessor:
         """
         
         try:
-            payload = {
-                "model": self.model,
-                "messages": [
+            completion = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
                     {"role": "system", "content": "你是一位资深新闻编辑，擅长从大量资讯中提取核心信息，具备高度的语言概括能力与逻辑组织能力。"},
                     {"role": "user", "content": prompt}
                 ],
-                "max_tokens": 1000
-            }
+                max_tokens=1000
+            )
             
-            response = requests.post(self.api_url, headers=self.headers, json=payload)
-            
-            if response.status_code == 200:
-                result = response.json()
-                summary = result["choices"][0]["message"]["content"].strip()
-                logger.info(f"Category '{category}' summary generated, length: {len(summary)} characters")
-                logger.debug(f"Category '{category}' summary content: {summary[:100]}...")
-                return summary
-            else:
-                error_msg = f"API request failed with status code: {response.status_code}, response: {response.text}"
-                logger.error(error_msg)
-                return f"无法为'{category}'生成摘要。错误: {error_msg}"
+            summary = completion.choices[0].message.content.strip()
+            logger.info(f"Category '{category}' summary generated, length: {len(summary)} characters")
+            logger.debug(f"Category '{category}' summary content: {summary[:100]}...")
+            return summary
         except Exception as e:
             logger.error(f"Error generating summary: {str(e)}")
             return f"无法为'{category}'生成摘要。错误: {str(e)}"
@@ -114,7 +105,7 @@ class AIProcessor:
         full_digest = f"# RSS 新闻摘要 - {current_date} {datetime.datetime.now().strftime('%H:%M')}\n\n"
         
         # 按指定顺序排列分类
-        priority_order = ["AI and Tech", "PC and Smartphone", "World News"]
+        priority_order = ["AI and Tech", "Market", "World News"]
         
         # 首先添加高优先级的分类
         for category in priority_order:
