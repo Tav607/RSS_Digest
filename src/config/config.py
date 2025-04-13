@@ -5,6 +5,9 @@ import os
 from dotenv import load_dotenv
 from pathlib import Path
 
+# 确定项目根目录
+PROJECT_ROOT = Path(__file__).parent.parent.parent
+
 # Load environment variables from .env file if it exists
 env_path = Path(__file__).parent / '.env'
 if env_path.exists():
@@ -29,3 +32,8 @@ OUTPUT_LANGUAGE = os.getenv('OUTPUT_LANGUAGE', "zh")  # Chinese
 # Telegram Bot configuration
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
+
+# 日志配置
+LOG_DIR = PROJECT_ROOT / 'logs'
+DIGEST_LOG_PATH = LOG_DIR / 'rss_digest.log'
+API_DEBUG_LOG_PATH = LOG_DIR / 'api_debug.log'

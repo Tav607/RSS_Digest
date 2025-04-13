@@ -8,8 +8,18 @@ import datetime
 from typing import Dict, List, Any, Union
 from openai import OpenAI
 
+# 从配置导入API调试日志路径
+from src.config import API_DEBUG_LOG_PATH
+
 # 创建命名记录器
 logger = logging.getLogger(__name__)
+
+# 为API调用创建专用的调试记录器
+api_logger = logging.getLogger("api")
+api_handler = logging.FileHandler(API_DEBUG_LOG_PATH)
+api_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+api_logger.addHandler(api_handler)
+api_logger.setLevel(logging.DEBUG)
 
 class AIProcessor:
     """
@@ -31,6 +41,7 @@ class AIProcessor:
             base_url=base_url,
             api_key=api_key
         )
+        api_logger.debug(f"AIProcessor initialized with model: {model}, base_url: {base_url}")
         
     def generate_category_summary(self, entries: List[Dict[Any, Any]], category: str, 
                                  language: str = None, word_limit: int = 500) -> str:
@@ -69,6 +80,8 @@ class AIProcessor:
         """
         
         try:
+            api_logger.debug(f"Generating summary for category: {category} with {len(entries)} entries")
+            
             completion = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
@@ -81,9 +94,12 @@ class AIProcessor:
             summary = completion.choices[0].message.content.strip()
             logger.info(f"Category '{category}' summary generated, length: {len(summary)} characters")
             logger.debug(f"Category '{category}' summary content: {summary[:100]}...")
+            api_logger.debug(f"AI summary response for '{category}': length={len(summary)} chars")
             return summary
         except Exception as e:
-            logger.error(f"Error generating summary: {str(e)}")
+            error_msg = f"Error generating summary: {str(e)}"
+            logger.error(error_msg)
+            api_logger.error(f"AI API error for '{category}': {str(e)}")
             return f"无法为'{category}'生成摘要。错误: {str(e)}"
     
     def generate_full_digest(self, category_summaries: Dict[str, str], 
@@ -99,6 +115,8 @@ class AIProcessor:
         Returns:
             A complete digest combining all categories
         """
+        api_logger.debug(f"Generating full digest with {len(category_summaries)} categories")
+        
         current_date = self._get_formatted_date()
         
         # Create title with current date
@@ -118,7 +136,8 @@ class AIProcessor:
             if category not in priority_order:
                 logger.info(f"Adding other category '{category}' to digest, summary length: {len(summary)} characters")
                 full_digest += f"## {category}\n\n{summary}\n\n"
-            
+        
+        api_logger.debug(f"Full digest generated, total length: {len(full_digest)} characters")
         return full_digest
 
     def _truncate_content(self, content: str, max_chars: int = 2000) -> str:

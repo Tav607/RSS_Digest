@@ -1,29 +1,28 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import os
-import sys
 import logging
-import argparse
-import datetime
 from typing import Dict, List, Any
 
-# Import project modules
-import config
-from db_utils import get_recent_entries, group_entries_by_category
-from ai_utils import AIProcessor
-from telegram_utils import TelegramSender
-
-# Set up logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout),
-        logging.FileHandler(os.path.join(os.path.dirname(__file__), 'rss_digest.log'))
-    ]
+# 导入项目模块
+from src.config import (
+    FRESHRSS_DB_PATH, 
+    AI_API_KEY, 
+    AI_MODEL, 
+    AI_BASE_URL,
+    TELEGRAM_BOT_TOKEN,
+    TELEGRAM_CHAT_ID, 
+    HOURS_BACK,
+    TARGET_WORD_COUNT
+)
+from src.utils import (
+    get_recent_entries, 
+    group_entries_by_category,
+    AIProcessor,
+    TelegramSender
 )
 
+# 获取记录器
 logger = logging.getLogger(__name__)
 
 def generate_digest(entries: List[Dict[Any, Any]]) -> str:
@@ -40,9 +39,9 @@ def generate_digest(entries: List[Dict[Any, Any]]) -> str:
     
     # Initialize AI processor
     ai_processor = AIProcessor(
-        api_key=config.AI_API_KEY,
-        model=config.AI_MODEL,
-        base_url=config.AI_BASE_URL
+        api_key=AI_API_KEY,
+        model=AI_MODEL,
+        base_url=AI_BASE_URL
     )
     
     # Group entries by category
@@ -60,7 +59,7 @@ def generate_digest(entries: List[Dict[Any, Any]]) -> str:
             summary = ai_processor.generate_category_summary(
                 entries=category_entries,
                 category=category,
-                word_limit=int(config.TARGET_WORD_COUNT / max(1, len(grouped_entries)))
+                word_limit=int(TARGET_WORD_COUNT / max(1, len(grouped_entries)))
             )
             if summary and len(summary.strip()) > 0:
                 logger.info(f"Summary for '{category}' generated successfully: {len(summary)} characters")
@@ -77,7 +76,7 @@ def generate_digest(entries: List[Dict[Any, Any]]) -> str:
     logger.info(f"Categories with summaries: {list(category_summaries.keys())}")
     full_digest = ai_processor.generate_full_digest(
         category_summaries=category_summaries,
-        word_limit=config.TARGET_WORD_COUNT
+        word_limit=TARGET_WORD_COUNT
     )
     
     # Check categories in final digest
@@ -108,8 +107,8 @@ def send_digest(digest_text: str) -> Dict[str, Any]:
     logger.info(f"Sending digest with categories in this order: {categories_order}")
     
     telegram = TelegramSender(
-        bot_token=config.TELEGRAM_BOT_TOKEN,
-        chat_id=config.TELEGRAM_CHAT_ID
+        bot_token=TELEGRAM_BOT_TOKEN,
+        chat_id=TELEGRAM_CHAT_ID
     )
     
     response = telegram.send_message(digest_text)
@@ -134,13 +133,13 @@ def run_digest_process(hours_back: int = None, send: bool = True) -> str:
     """
     # Use config value if not provided
     if hours_back is None:
-        hours_back = config.HOURS_BACK
+        hours_back = HOURS_BACK
         
     logger.info(f"Starting RSS digest process (looking back {hours_back} hours)")
     
     # Get entries from database
     entries = get_recent_entries(
-        db_path=config.FRESHRSS_DB_PATH,
+        db_path=FRESHRSS_DB_PATH,
         hours_back=hours_back
     )
     
@@ -158,42 +157,4 @@ def run_digest_process(hours_back: int = None, send: bool = True) -> str:
     if send:
         send_digest(digest)
     
-    return digest
-
-def main():
-    """Main entry point with command line argument parsing"""
-    parser = argparse.ArgumentParser(description='RSS Feed Digest Generator')
-    parser.add_argument('--hours', type=int, default=None, 
-                        help='Hours back to look for entries (default: from config)')
-    parser.add_argument('--no-send', action='store_true', 
-                        help='Generate digest but do not send via Telegram')
-    parser.add_argument('--save', action='store_true', 
-                        help='Save digest to a file')
-    parser.add_argument('--debug', action='store_true',
-                        help='Enable debug logging')
-    args = parser.parse_args()
-    
-    # Set debug logging if requested
-    if args.debug:
-        logging.getLogger().setLevel(logging.DEBUG)
-        logger.debug("Debug logging enabled")
-    
-    # Run the process
-    digest = run_digest_process(
-        hours_back=args.hours,
-        send=not args.no_send
-    )
-    
-    # Save to file if requested
-    if args.save:
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = os.path.join(os.path.dirname(__file__), f"digest_{timestamp}.txt")
-        with open(filename, 'w', encoding='utf-8') as f:
-            f.write(digest)
-        logger.info(f"Digest saved to {filename}")
-    
-    # Print summary to console
-    print(f"Digest generation completed. Length: {len(digest)} characters")
-    
-if __name__ == "__main__":
-    main() 
+    return digest 

@@ -1,5 +1,7 @@
 # Python
 __pycache__/
+*/__pycache__/
+*/*/__pycache__/
 *.py[cod]
 *$py.class
 *.so
@@ -23,6 +25,7 @@ venv/
 
 # Environments
 .env
+src/config/.env
 .venv
 env/
 ENV/
@@ -30,6 +33,8 @@ ENV/
 # Logs
 *.log
 logs/
+api_debug.log
+rss_digest.log
 digest_*.txt
 
 # OS specific

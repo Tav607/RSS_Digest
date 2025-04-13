@@ -3,7 +3,46 @@
 
 import sqlite3
 import datetime
+import re
 from typing import List, Dict, Any
+from bs4 import BeautifulSoup
+
+def clean_html_content(html_content: str) -> str:
+    """
+    清理HTML内容，提取正文
+    
+    Args:
+        html_content: 原始HTML内容
+        
+    Returns:
+        清理后的文本内容
+    """
+    if not html_content:
+        return ""
+    
+    # 使用BeautifulSoup解析HTML
+    soup = BeautifulSoup(html_content, 'html.parser')
+    
+    # 移除script和style元素
+    for script in soup(["script", "style"]):
+        script.extract()
+    
+    # 尝试定位微信公众号文章的主要内容
+    # 通常微信文章内容在特定的div中
+    content_candidates = soup.find_all(['div', 'section'], class_=re.compile(r'(content|rich_media_content|article)'))
+    
+    if content_candidates:
+        main_content = max(content_candidates, key=lambda x: len(x.get_text()))
+        text = main_content.get_text(separator='\n')
+    else:
+        # 如果找不到明确的内容div，就提取所有文本
+        text = soup.get_text(separator='\n')
+    
+    # 清理多余空行
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    cleaned_text = '\n'.join(lines)
+    
+    return cleaned_text
 
 def get_recent_entries(db_path: str, hours_back: int = 8) -> List[Dict[Any, Any]]:
     """
@@ -43,11 +82,15 @@ def get_recent_entries(db_path: str, hours_back: int = 8) -> List[Dict[Any, Any]
     # Convert to list of dictionaries
     entries = []
     for row in results:
+        raw_content = row['content']
+        cleaned_content = clean_html_content(raw_content)
+        
         entry = {
             'id': row['id'],
             'title': row['title'],
             'author': row['author'],
-            'content': row['content'],
+            'content': cleaned_content,  # 使用清理后的内容
+            'raw_content': raw_content,  # 保留原始内容以备需要
             'link': row['link'],
             'date': datetime.datetime.fromtimestamp(row['date']),
             'category': row['category'] or 'Uncategorized',
