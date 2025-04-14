@@ -2,7 +2,6 @@ from .config import (
     FRESHRSS_DB_PATH,
     USERNAME,
     HOURS_BACK,
-    AI_PROVIDER,
     AI_API_KEY,
     AI_MODEL,
     AI_BASE_URL,

@@ -19,11 +19,9 @@ USERNAME = os.getenv('USERNAME')
 HOURS_BACK = int(os.getenv('HOURS_BACK', "8"))
 
 # AI API configuration
-# Using OpenAI as an example, replace with your preferred AI provider
-AI_PROVIDER = os.getenv('AI_PROVIDER')  # Options: openai, anthropic, etc.
-AI_API_KEY = os.getenv('AI_API_KEY')
-AI_MODEL = os.getenv('AI_MODEL')  # Change to your preferred model
-AI_BASE_URL = os.getenv('AI_BASE_URL')  # Default for OpenAI, override for VolceEngine
+AI_API_KEY = os.getenv('VOLCENGINE_API_KEY')
+AI_MODEL = os.getenv('VOLCENGINE_MODEL_ID')  
+AI_BASE_URL = os.getenv('VOLCENGINE_BASE_URL')  
 
 # Output configuration
 TARGET_WORD_COUNT = int(os.getenv('TARGET_WORD_COUNT', "1000"))
