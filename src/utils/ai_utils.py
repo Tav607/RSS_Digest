@@ -21,18 +21,35 @@ api_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname
 api_logger.addHandler(api_handler)
 api_logger.setLevel(logging.DEBUG)
 
+# 读取 system prompt 内容
+SYSTEM_PROMPT = "你是一位资深新闻编辑，擅长从大量资讯中提取核心信息并生成摘要。" # Default fallback
+try:
+    # Use absolute path based on the script's location
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    prompt_path = os.path.join(script_dir, "system_prompt.md")
+    if os.path.exists(prompt_path):
+        with open(prompt_path, "r", encoding="utf-8") as f:
+            SYSTEM_PROMPT = f.read()
+        logger.info(f"Successfully loaded system prompt from {prompt_path}")
+    else:
+        logger.error(f"System prompt file '{prompt_path}' not found. Using default prompt.")
+
+except Exception as e:
+    logger.error(f"Error reading system prompt file '{prompt_path}': {e}. Using default prompt.")
+
+
 class AIProcessor:
     """
-    Class for processing content through AI models and generating summaries
+    通过 AI 模型处理内容并生成摘要的类。
     """
     def __init__(self, api_key: str, model: str, base_url: str):
         """
-        Initialize the AI processor
-        
+        初始化 AI 处理器。
+
         Args:
-            api_key: API key for the AI service
-            model: AI model to use
-            base_url: Base URL for the VolceEngine API
+            api_key: AI 服务的 API 密钥。
+            model: 要使用的 AI 模型。
+            base_url: API 的基础 URL。
         """
         self.model = model
         self.api_key = api_key
@@ -42,111 +59,94 @@ class AIProcessor:
             api_key=api_key
         )
         api_logger.debug(f"AIProcessor initialized with model: {model}, base_url: {base_url}")
-        
-    def generate_category_summary(self, entries: List[Dict[Any, Any]], category: str, 
-                                 language: str = None, word_limit: int = 500) -> str:
+
+    def generate_digest(self, entries: List[Dict[Any, Any]]) -> str:
         """
-        Generate a summary for a specific category of RSS entries
-        
+        一次性处理所有 RSS 条目，生成完整的摘要。
+
         Args:
-            entries: List of entry dictionaries
-            category: Original RSS category name
-            language: Output language (deprecated, output is hardcoded to Chinese)
-            word_limit: Approximate word limit for the summary
-            
+            entries: 包含所有 RSS 条目的字典列表。
+
         Returns:
-            A summary of the entries in the specified category
+            由 AI 生成的完整摘要文本。
         """
         if not entries:
-            return f"No content for category: {category}"
-            
-        # Prepare content for the AI
-        content_text = ""
-        for entry in entries[:50]:  # Limit to top 50 entries to avoid token limits
-            content_text += f"标题: {entry['title']}\n"
-            content_text += f"来源: {entry['feed_name']}\n"
-            content_text += f"内容摘要: {self._truncate_content(entry['content'])}\n\n"
-            
-        prompt = f"""
-        请阅读以下RSS文章集合，基于所有内容生成一份结构化、简洁明了的中文摘要，要求如下：
-        1. 使用bullet point格式输出，每条不超过100字；
-        2. 所有bullet point之间不要留空行，排列紧凑；
-        3. 内容应信息密度高、语言简洁有力、条理清晰，准确反映整体信息和关键信息点；
-        4. 本次内容归属类别："{category}"；
-        5. 控制总字数约为**{word_limit}字以内**，确保摘要紧凑有效。
+            logger.warning("No entries provided for digest generation.")
+            return "没有可供处理的 RSS 条目。"
 
-        RSS条目内容:
-        {content_text}
-        """
-        
+        # 准备所有条目的内容作为 User Prompt
+        content_text = ""
+        entry_count = 0
+        for entry in entries:
+            # 截断内容
+            truncated_content = self._truncate_content(entry.get('content', ''), max_chars=5000) # 每个条目限制5000字符
+            title = entry.get('title', 'N/A')
+            source = entry.get('feed_name', 'N/A')
+
+            content_text += f"标题: {title}\n"
+            content_text += f"来源: {source}\n"
+            content_text += f"正文摘要: {truncated_content}\n\n"
+            entry_count += 1
+            # 可以根据需要增加 token 估算和提前停止的逻辑
+
+        if not content_text.strip():
+             logger.warning("Content text for AI prompt is empty after processing entries.")
+             return "处理后无有效内容可生成摘要。"
+
+        api_logger.debug(f"Generating digest from {entry_count} entries.")
+        logger.info(f"Sending {entry_count} entries to AI for digest generation.")
+
         try:
-            api_logger.debug(f"Generating summary for category: {category} with {len(entries)} entries")
-            
             completion = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": "你是一位资深新闻编辑，擅长从大量资讯中提取核心信息，具备高度的语言概括能力与逻辑组织能力。"},
-                    {"role": "user", "content": prompt}
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": content_text}
                 ],
-                max_tokens=1000
+                max_tokens=2000, # 根据预期输出长度调整, 考虑增加温度等参数
+                temperature=0.5 # 添加温度参数，控制生成文本的随机性
             )
-            
-            summary = completion.choices[0].message.content.strip()
-            logger.info(f"Category '{category}' summary generated, length: {len(summary)} characters")
-            logger.debug(f"Category '{category}' summary content: {summary[:100]}...")
-            api_logger.debug(f"AI summary response for '{category}': length={len(summary)} chars")
-            return summary
-        except Exception as e:
-            error_msg = f"Error generating summary: {str(e)}"
-            logger.error(error_msg)
-            api_logger.error(f"AI API error for '{category}': {str(e)}")
-            return f"无法为'{category}'生成摘要。错误: {str(e)}"
-    
-    def generate_full_digest(self, category_summaries: Dict[str, str], 
-                           language: str = None, word_limit: int = 2000) -> str:
-        """
-        Generate a full digest by concatenating all category summaries
-        
-        Args:
-            category_summaries: Dictionary of category names and their summaries
-            language: Output language (not used, included for backwards compatibility)
-            word_limit: Not used anymore, included for backwards compatibility
-            
-        Returns:
-            A complete digest combining all categories
-        """
-        api_logger.debug(f"Generating full digest with {len(category_summaries)} categories")
-        
-        current_date = self._get_formatted_date()
-        
-        # Create title with current date
-        full_digest = f"# RSS 新闻摘要 - {current_date} {datetime.datetime.now().strftime('%H:%M')}\n\n"
-        
-        # 按指定顺序排列分类
-        priority_order = ["AI and Tech", "Market", "World News"]
-        
-        # 首先添加高优先级的分类
-        for category in priority_order:
-            if category in category_summaries:
-                logger.info(f"Adding priority category '{category}' to digest, summary length: {len(category_summaries[category])} characters")
-                full_digest += f"## {category}\n\n{category_summaries[category]}\n\n"
-        
-        # 然后添加剩余的分类
-        for category, summary in category_summaries.items():
-            if category not in priority_order:
-                logger.info(f"Adding other category '{category}' to digest, summary length: {len(summary)} characters")
-                full_digest += f"## {category}\n\n{summary}\n\n"
-        
-        api_logger.debug(f"Full digest generated, total length: {len(full_digest)} characters")
-        return full_digest
 
-    def _truncate_content(self, content: str, max_chars: int = 2000) -> str:
-        """Truncate content to a reasonable length"""
-        if len(content) <= max_chars:
-            return content
-        return content[:max_chars] + "..."
-        
+            digest = completion.choices[0].message.content.strip()
+            logger.info(f"Digest generated, length: {len(digest)} characters.")
+            logger.debug(f"Generated digest content (first 150 chars): {digest[:150]}...")
+            api_logger.debug(f"AI digest response: length={len(digest)} chars")
+
+            # 在 AI 生成的内容前添加日期标题
+            current_date = self._get_formatted_date()
+            # 假设 system prompt 指导 AI 输出包含 Markdown 标题的完整格式
+            # 这里直接返回 AI 的结果，如果需要强制添加主标题，可以取消下面注释
+            final_digest = digest
+            # 如果需要强制添加日期主标题，即使AI已生成部分标题:
+            # if not digest.lstrip().startswith("#"):
+            #      final_digest = f"# RSS 新闻摘要 - {current_date} {datetime.datetime.now().strftime('%H:%M')}\n\n{digest}"
+            # else:
+                 # 可选：如果 AI 输出了内容，但没有主标题，则添加
+                 # pass # 或者保持 final_digest = digest
+
+            # 确保返回非空字符串
+            if not final_digest:
+                logger.warning("AI generated an empty digest.")
+                return "AI生成了空的摘要内容。"
+
+            return final_digest
+
+        except Exception as e:
+            error_msg = f"Error generating digest: {str(e)}"
+            logger.exception(f"AI API error during digest generation: {error_msg}") # 使用 exception 记录堆栈信息
+            api_logger.error(f"AI API error during digest generation: {str(e)}")
+            return f"无法生成摘要。错误: {str(e)}"
+
+    def _truncate_content(self, content: str, max_chars: int = 1000) -> str:
+        """将内容截断到合理长度"""
+        if content is None:
+            return ""
+        content_str = str(content) # 确保是字符串
+        if len(content_str) <= max_chars:
+            return content_str
+        return content_str[:max_chars] + "..."
+
     def _get_formatted_date(self) -> str:
-        """Get current date formatted in Chinese style"""
+        """获取中文格式的当前日期"""
         now = datetime.datetime.now()
         return f"{now.year}年{now.month}月{now.day}日" 

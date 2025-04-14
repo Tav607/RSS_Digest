@@ -3,6 +3,7 @@
 
 import logging
 from typing import Dict, List, Any
+import datetime
 
 # 导入项目模块
 from src.config import (
@@ -33,9 +34,9 @@ def generate_digest(entries: List[Dict[Any, Any]]) -> str:
         entries: List of entry dictionaries
         
     Returns:
-        Generated digest text
+        Generated digest text including timestamp header
     """
-    logger.info(f"Generating digest from {len(entries)} entries")
+    logger.info(f"Generating digest from {len(entries)} entries using single AI call.")
     
     # Initialize AI processor
     ai_processor = AIProcessor(
@@ -44,51 +45,30 @@ def generate_digest(entries: List[Dict[Any, Any]]) -> str:
         base_url=AI_BASE_URL
     )
     
-    # Group entries by category
-    grouped_entries = group_entries_by_category(entries)
+    # Directly generate the full digest using the new method
+    ai_generated_digest = ai_processor.generate_digest(entries=entries)
+
+    if not ai_generated_digest or len(ai_generated_digest.strip()) == 0:
+        logger.error("AIProcessor generated an empty or invalid digest.")
+        # Return a more informative message or raise an exception
+        return "Failed to generate digest: AI returned empty content."
     
-    # Log category counts
-    for category, category_entries in grouped_entries.items():
-        logger.info(f"Category '{category}': {len(category_entries)} entries")
+    # Format the current datetime
+    now = datetime.datetime.now()
+    # Use yyyy/mm/dd format as requested
+    formatted_datetime = now.strftime("%Y/%m/%d %H:%M")
+
+    # Create the title string
+    title = f"# RSS 新闻摘要 - {formatted_datetime}"
+
+    # Prepend the title and a blank line to the AI generated content
+    full_digest_with_title = f"{title}\n\n{ai_generated_digest}"
+
+    logger.info(f"Digest generated successfully, final length (incl. title): {len(full_digest_with_title)} characters.")
+    # Log beginning of the final digest with title
+    logger.debug(f"Final digest content (first 150 chars): {full_digest_with_title[:150]}...")
     
-    # Generate summary for each category
-    category_summaries = {}
-    for category, category_entries in grouped_entries.items():
-        if category_entries:
-            logger.info(f"Generating summary for category: {category}")
-            summary = ai_processor.generate_category_summary(
-                entries=category_entries,
-                category=category,
-                word_limit=int(TARGET_WORD_COUNT / max(1, len(grouped_entries)))
-            )
-            if summary and len(summary.strip()) > 0:
-                logger.info(f"Summary for '{category}' generated successfully: {len(summary)} characters")
-                category_summaries[category] = summary
-            else:
-                logger.warning(f"Empty or invalid summary generated for '{category}'")
-    
-    # Debug log all summaries
-    for category, summary in category_summaries.items():
-        logger.debug(f"Category '{category}' summary: {summary[:100]}...")
-    
-    # Generate full digest
-    logger.info("Generating full digest")
-    logger.info(f"Categories with summaries: {list(category_summaries.keys())}")
-    full_digest = ai_processor.generate_full_digest(
-        category_summaries=category_summaries,
-        word_limit=TARGET_WORD_COUNT
-    )
-    
-    # Check categories in final digest
-    categories_in_digest = [line.strip('# ') for line in full_digest.split('\n') if line.startswith('## ')]
-    logger.info(f"Categories in final digest (ordered): {categories_in_digest}")
-    
-    # Check for missing categories
-    missing_categories = set(category_summaries.keys()) - set(categories_in_digest)
-    if missing_categories:
-        logger.warning(f"Categories missing from final digest: {missing_categories}")
-    
-    return full_digest
+    return full_digest_with_title
 
 def send_digest(digest_text: str) -> Dict[str, Any]:
     """
