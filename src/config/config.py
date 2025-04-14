@@ -19,13 +19,9 @@ USERNAME = os.getenv('USERNAME')
 HOURS_BACK = int(os.getenv('HOURS_BACK', "8"))
 
 # AI API configuration
-AI_API_KEY = os.getenv('VOLCENGINE_API_KEY')
-AI_MODEL = os.getenv('VOLCENGINE_MODEL_ID')  
-AI_BASE_URL = os.getenv('VOLCENGINE_BASE_URL')  
-
-# Output configuration
-TARGET_WORD_COUNT = int(os.getenv('TARGET_WORD_COUNT', "1000"))
-OUTPUT_LANGUAGE = os.getenv('OUTPUT_LANGUAGE', "zh")  # Chinese
+AI_API_KEY = os.getenv('GOOGLE_API_KEY')
+AI_MODEL = os.getenv('GOOGLE_MODEL_ID')  
+AI_BASE_URL = os.getenv('GOOGLE_BASE_URL')  
 
 # Telegram Bot configuration
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')

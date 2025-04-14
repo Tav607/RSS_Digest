@@ -14,7 +14,6 @@ from src.config import (
     TELEGRAM_BOT_TOKEN,
     TELEGRAM_CHAT_ID, 
     HOURS_BACK,
-    TARGET_WORD_COUNT
 )
 from src.utils import (
     get_recent_entries, 
