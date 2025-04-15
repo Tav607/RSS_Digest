@@ -20,7 +20,8 @@
 │   ├── utils/              # 工具类目录
 │   │   ├── ai_utils.py     # AI处理工具
 │   │   ├── db_utils.py     # 数据库工具
-│   │   └── telegram_utils.py   # Telegram发送工具
+│   │   ├── telegram_utils.py   # Telegram发送工具
+│   │   └── system_prompt.md  # 系统提示文件
 │   ├── __init__.py         # 包初始化文件
 │   └── main.py             # 主程序入口
 ├── requirements.txt        # 依赖项列表
@@ -199,17 +200,4 @@ crontab -e
 ## 故障排除
 
 如果遇到问题，请检查：
-- `.env`文件配置是否正确
-- FreshRSS数据库路径是否可访问
-- API密钥是否有效
-- 查看`rss_digest.log`获取详细错误信息
-
-## 项目结构
-
-- `main.py` - 主程序
-- `config.py` - 配置加载和管理
-- `ai_utils.py` - AI处理相关功能
-- `db_utils.py` - 数据库操作功能
-- `telegram_utils.py` - Telegram发送功能
-- `run.sh` - 运行脚本
-- `setup.sh` - 初始安装脚本
+- `.env`

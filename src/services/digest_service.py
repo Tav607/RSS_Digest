@@ -17,7 +17,6 @@ from src.config import (
 )
 from src.utils import (
     get_recent_entries, 
-    group_entries_by_category,
     AIProcessor,
     TelegramSender
 )
@@ -44,27 +43,21 @@ def generate_digest(entries: List[Dict[Any, Any]]) -> str:
         base_url=AI_BASE_URL
     )
     
-    # Directly generate the full digest using the new method
+    # Generate the full digest
     ai_generated_digest = ai_processor.generate_digest(entries=entries)
 
     if not ai_generated_digest or len(ai_generated_digest.strip()) == 0:
         logger.error("AIProcessor generated an empty or invalid digest.")
-        # Return a more informative message or raise an exception
         return "Failed to generate digest: AI returned empty content."
     
     # Format the current datetime
-    now = datetime.datetime.now()
-    # Use yyyy/mm/dd format as requested
-    formatted_datetime = now.strftime("%Y/%m/%d %H:%M")
+    formatted_datetime = datetime.datetime.now().strftime("%Y/%m/%d %H:%M")
 
-    # Create the title string
+    # Create the title and full digest
     title = f"# RSS 新闻摘要 - {formatted_datetime}"
-
-    # Prepend the title and a blank line to the AI generated content
     full_digest_with_title = f"{title}\n\n{ai_generated_digest}"
 
-    logger.info(f"Digest generated successfully, final length (incl. title): {len(full_digest_with_title)} characters.")
-    # Log beginning of the final digest with title
+    logger.info(f"Digest generated successfully, final length: {len(full_digest_with_title)} characters.")
     logger.debug(f"Final digest content (first 150 chars): {full_digest_with_title[:150]}...")
     
     return full_digest_with_title

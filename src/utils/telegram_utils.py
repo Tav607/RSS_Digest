@@ -3,10 +3,44 @@
 
 import requests
 import logging
+import re
 from typing import Dict, Any
 
 # 创建命名记录器
 logger = logging.getLogger(__name__)
+
+def _escape_markdown_v2_content(text: str) -> str:
+    """Escapes MarkdownV2 special characters in a given string."""
+    # Characters to escape: _ * [ ] ( ) ~ ` > # + - = | { } . !
+    escape_chars_pattern = r'([_*\[\]()~`>#+=|{}.!-])'
+    # Escape the characters by adding a preceding \
+    return re.sub(escape_chars_pattern, r'\\\1', text)
+
+def _process_markdown_structure_and_escape(text: str) -> str:
+    """Processes specific markdown structure (#, ##, -) and escapes the rest for MarkdownV2."""
+    processed_lines = []
+    for line in text.strip().split('\n'):
+        stripped_line = line.strip()
+        if stripped_line.startswith('# '): # Main title
+            # Escape content after '# '
+            title_content = _escape_markdown_v2_content(stripped_line[2:])
+            # Format as Bold
+            processed_lines.append(f"*{title_content}*")
+        elif stripped_line.startswith('## '): # Subtitle
+            # Escape content after '## '
+            subtitle_content = _escape_markdown_v2_content(stripped_line[3:])
+            # Format as Bold
+            processed_lines.append(f"*{subtitle_content}*")
+        elif stripped_line.startswith('- '): # Bullet point
+            # Escape content after '- '
+            bullet_content = _escape_markdown_v2_content(stripped_line[2:])
+            # Keep the bullet point structure, Telegram supports this
+            processed_lines.append(f"\\- {bullet_content}")
+        elif stripped_line: # Non-empty line, escape the whole line
+            processed_lines.append(_escape_markdown_v2_content(stripped_line))
+        else: # Keep empty lines for separation
+            processed_lines.append("")
+    return '\n'.join(processed_lines)
 
 class TelegramSender:
     """
@@ -24,81 +58,116 @@ class TelegramSender:
         self.chat_id = chat_id
         self.api_url = f"https://api.telegram.org/bot{bot_token}"
         
-    def send_message(self, text: str, parse_mode: str = "Markdown") -> Dict[str, Any]:
-        """
-        Send a message via Telegram
-        
-        Args:
-            text: Text message to send
-            parse_mode: Message parse mode (Markdown, HTML, or empty string for plain text)
-            
-        Returns:
-            Response from Telegram API
-        """
-        logger.info(f"Sending message to Telegram, length: {len(text)} characters")
-        logger.debug(f"Message categories included: {[line.strip('# ') for line in text.split('\n') if line.startswith('## ')]}")
-        
-        # Split long messages if needed (Telegram has a 4096 character limit)
-        if len(text) > 4000:
-            return self._send_long_message(text, parse_mode)
-            
+    def _send_single_message(self, text: str, parse_mode: str) -> Dict[str, Any]:
+        """Internal method to send a single message chunk."""
         endpoint = f"{self.api_url}/sendMessage"
         data = {
             "chat_id": self.chat_id,
             "text": text
         }
-        
-        # Only add parse_mode if it's provided (not empty)
         if parse_mode:
             data["parse_mode"] = parse_mode
-        
+
         try:
             response = requests.post(endpoint, data=data)
             result = response.json()
-            
             if not result.get("ok"):
-                error_msg = f"Failed to send Telegram message: {result.get('description', 'Unknown error')}"
+                error_msg = f"Failed to send Telegram message chunk: {result.get('description', 'Unknown error')} for text starting with: {text[:50]}..."
                 logger.error(error_msg)
                 return {"success": False, "error": error_msg}
-                
             return {"success": True, "result": result}
         except Exception as e:
-            error_msg = f"Error sending Telegram message: {str(e)}"
+            error_msg = f"Error sending Telegram message chunk: {str(e)}"
             logger.error(error_msg)
             return {"success": False, "error": error_msg}
-            
-    def _send_long_message(self, text: str, parse_mode: str = "Markdown") -> Dict[str, Any]:
+
+    def send_message(self, text: str, parse_mode: str = "MarkdownV2", process_markdown: bool = True) -> Dict[str, Any]:
         """
-        Send a message that exceeds Telegram's character limit by splitting it
-        
+        Send a message via Telegram, processing custom markdown and handling long messages.
+
         Args:
-            text: Text message to send
-            parse_mode: Message parse mode
-            
+            text: Text message to send.
+            parse_mode: Message parse mode (MarkdownV2, HTML, or empty string). Defaults to MarkdownV2.
+            process_markdown: If True (default), process text with #, ##, - and escape for MarkdownV2.
+
         Returns:
-            Response from the last message sent
+            Response from Telegram API for the last message part sent.
         """
-        # Split by double newline to try to break at logical points (paragraphs)
-        chunks = text.split("\n\n")
-        current_chunk = ""
-        last_response = None
-        
-        for chunk in chunks:
-            # Check if adding this chunk would exceed the limit
-            if len(current_chunk) + len(chunk) + 2 <= 4000:  # +2 for the newlines
-                if current_chunk:
-                    current_chunk += "\n\n" + chunk
-                else:
-                    current_chunk = chunk
+        logger.info(f"Preparing message for Telegram, original length: {len(text)} characters")
+
+        processed_text = text
+        if parse_mode == "MarkdownV2":
+            if process_markdown:
+                logger.debug("Processing text for MarkdownV2 structure and escaping...")
+                processed_text = _process_markdown_structure_and_escape(text)
             else:
-                # Send the current chunk and start a new one
-                response = self.send_message(current_chunk, parse_mode)
-                last_response = response
-                current_chunk = chunk
-        
-        # Send any remaining content
-        if current_chunk:
-            response = self.send_message(current_chunk, parse_mode)
+                logger.debug("Escaping text content for MarkdownV2...")
+                processed_text = _escape_markdown_v2_content(text)
+            logger.debug(f"Processed text length: {len(processed_text)}")
+
+        # Check length after processing/escaping
+        if len(processed_text) > 4096:  # Telegram's hard limit
+            logger.info(f"Message length ({len(processed_text)}) exceeds limit, splitting...")
+            return self._send_long_message(processed_text, parse_mode)
+        else:
+            logger.info(f"Sending single message part, length: {len(processed_text)}")
+            return self._send_single_message(processed_text, parse_mode)
+
+    def _send_long_message(self, processed_text: str, parse_mode: str) -> Dict[str, Any]:
+        """
+        Send a long message (already processed/escaped) by splitting it carefully.
+
+        Args:
+            processed_text: The full text message, already processed and escaped.
+            parse_mode: Message parse mode.
+
+        Returns:
+            Response from the last message sent.
+        """
+        # Split primarily by double newline, then single newline, then space
+        chunks = []
+        # Split carefully to avoid breaking mid-escape sequence or formatting
+        potential_splits = re.split(r'(\n\n|\n)', processed_text)
+
+        temp_chunk = ""
+        for part in potential_splits:
+            if part is None:
+                continue  # Skip None parts if regex captures optional groups
+
+            # If adding the next part (e.g., "\n\n" or text segment) exceeds the limit
+            if len(temp_chunk) + len(part) <= 4096:
+                temp_chunk += part
+            else:
+                # If the current temp_chunk is not empty, add it as a chunk
+                if temp_chunk:
+                    chunks.append(temp_chunk)
+                # If the part itself is too long, we have to split it (less ideal)
+                if len(part) > 4096:
+                     # Force split the oversized part
+                    for i in range(0, len(part), 4096):
+                        chunks.append(part[i:i+4096])
+                    temp_chunk = ""  # Reset temp_chunk
+                else:
+                    # Start the new chunk with this part
+                    temp_chunk = part
+
+        # Add the last remaining chunk
+        if temp_chunk:
+            chunks.append(temp_chunk)
+
+        last_response = None
+        total_chunks = len(chunks)
+        logger.info(f"Splitting message into {total_chunks} chunks.")
+
+        for i, chunk in enumerate(chunks):
+            if not chunk.strip():  # Skip empty chunks
+                continue
+            logger.info(f"Sending chunk {i+1}/{total_chunks}, length: {len(chunk)}")
+            response = self._send_single_message(chunk, parse_mode)
             last_response = response
-            
-        return last_response or {"success": False, "error": "No content to send"} 
+            if not response.get("success"):
+                logger.error(f"Failed to send chunk {i+1}, stopping further sends.")
+                # Return the error from the failed chunk
+                return response
+
+        return last_response or {"success": False, "error": "No content chunks were sent"}

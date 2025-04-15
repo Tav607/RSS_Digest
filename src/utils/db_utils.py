@@ -5,7 +5,11 @@ import sqlite3
 import datetime
 import re
 from typing import List, Dict, Any
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, MarkupResemblesLocatorWarning
+import warnings
+
+# Ignore the specific BeautifulSoup warning about URLs resembling file paths
+warnings.filterwarnings("ignore", category=MarkupResemblesLocatorWarning)
 
 def clean_html_content(html_content: str) -> str:
     """
@@ -28,7 +32,6 @@ def clean_html_content(html_content: str) -> str:
         script.extract()
     
     # 尝试定位微信公众号文章的主要内容
-    # 通常微信文章内容在特定的div中
     content_candidates = soup.find_all(['div', 'section'], class_=re.compile(r'(content|rich_media_content|article)'))
     
     if content_candidates:
@@ -40,9 +43,7 @@ def clean_html_content(html_content: str) -> str:
     
     # 清理多余空行
     lines = [line.strip() for line in text.splitlines() if line.strip()]
-    cleaned_text = '\n'.join(lines)
-    
-    return cleaned_text
+    return '\n'.join(lines)
 
 def get_recent_entries(db_path: str, hours_back: int = 8) -> List[Dict[Any, Any]]:
     """
@@ -56,8 +57,7 @@ def get_recent_entries(db_path: str, hours_back: int = 8) -> List[Dict[Any, Any]
         List of dictionaries containing feed entries with their content
     """
     # Calculate timestamp for N hours ago
-    now = datetime.datetime.now()
-    timestamp = int((now - datetime.timedelta(hours=hours_back)).timestamp())
+    timestamp = int((datetime.datetime.now() - datetime.timedelta(hours=hours_back)).timestamp())
     
     # Connect to the database
     conn = sqlite3.connect(db_path)
@@ -83,20 +83,17 @@ def get_recent_entries(db_path: str, hours_back: int = 8) -> List[Dict[Any, Any]
     entries = []
     for row in results:
         raw_content = row['content']
-        cleaned_content = clean_html_content(raw_content)
-        
-        entry = {
+        entries.append({
             'id': row['id'],
             'title': row['title'],
             'author': row['author'],
-            'content': cleaned_content,  # 使用清理后的内容
-            'raw_content': raw_content,  # 保留原始内容以备需要
+            'content': clean_html_content(raw_content),
+            'raw_content': raw_content,
             'link': row['link'],
             'date': datetime.datetime.fromtimestamp(row['date']),
             'category': row['category'] or 'Uncategorized',
             'feed_name': row['feed_name']
-        }
-        entries.append(entry)
+        })
     
     conn.close()
     return entries
