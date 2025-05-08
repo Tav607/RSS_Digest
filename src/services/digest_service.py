@@ -74,10 +74,6 @@ def send_digest(digest_text: str) -> Dict[str, Any]:
     """
     logger.info("Sending digest via Telegram")
     
-    # 记录摘要中的分类顺序
-    categories_order = [line.strip('# ') for line in digest_text.split('\n') if line.startswith('## ')]
-    logger.info(f"Sending digest with categories in this order: {categories_order}")
-    
     telegram = TelegramSender(
         bot_token=TELEGRAM_BOT_TOKEN,
         chat_id=TELEGRAM_CHAT_ID

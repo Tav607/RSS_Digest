@@ -75,7 +75,7 @@ class AIProcessor:
         entry_count = 0
         for entry in entries:
             # 截断内容
-            truncated_content = self._truncate_content(entry.get('content', ''), max_chars=5000)
+            truncated_content = self._truncate_content(entry.get('content', ''), max_chars=4000)
             title = entry.get('title', 'N/A')
             source = entry.get('feed_name', 'N/A')
 
@@ -96,10 +96,9 @@ class AIProcessor:
                 model=self.model,
                 messages=[
                     {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": content_text}
+                    {"role": "user", "content": "以下为待摘要 RSS 条目，请按系统提示处理：\n\n ---RSS_START--- \n\n " + content_text + "\n\n ---RSS_END---"}
                 ],
-                max_tokens=8192,
-                temperature=0.5
+                temperature=0.2
             )
 
             digest = completion.choices[0].message.content.strip()
@@ -120,7 +119,7 @@ class AIProcessor:
             api_logger.error(f"AI API error during digest generation: {str(e)}")
             return f"无法生成摘要。错误: {str(e)}"
 
-    def _truncate_content(self, content: str, max_chars: int = 2000) -> str:
+    def _truncate_content(self, content: str, max_chars: int = 4000) -> str:
         """将内容截断到合理长度"""
         if content is None:
             return ""
