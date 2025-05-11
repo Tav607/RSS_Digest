@@ -7,6 +7,8 @@ import re
 from typing import List, Dict, Any
 from bs4 import BeautifulSoup, MarkupResemblesLocatorWarning
 import warnings
+import json
+import os
 
 # Ignore the specific BeautifulSoup warning about URLs resembling file paths
 warnings.filterwarnings("ignore", category=MarkupResemblesLocatorWarning)
@@ -45,17 +47,33 @@ def clean_html_content(html_content: str) -> str:
     lines = [line.strip() for line in text.splitlines() if line.strip()]
     return '\n'.join(lines)
 
-def get_recent_entries(db_path: str, hours_back: int = 8) -> List[Dict[Any, Any]]:
+def get_recent_entries(db_path: str, hours_back: int = 48, processed_ids_file_path: str = None) -> List[Dict[Any, Any]]:
     """
-    Retrieve entries from the past few hours from the FreshRSS database
+    Retrieve entries from the past few hours from the FreshRSS database,
+    excluding entries that have been processed before.
     
     Args:
         db_path: Path to the SQLite database
         hours_back: How many hours back to look for entries
+        processed_ids_file_path: Path to the JSON file storing processed entry IDs
         
     Returns:
         List of dictionaries containing feed entries with their content
     """
+    processed_entry_ids = set()
+    if processed_ids_file_path and os.path.exists(processed_ids_file_path):
+        try:
+            with open(processed_ids_file_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                if isinstance(data, list): # Ensure it's a list of IDs
+                    processed_entry_ids = set(data)
+        except json.JSONDecodeError:
+            # Handle empty or malformed JSON file
+            pass
+        except Exception:
+            # Log other potential errors if a logger is available here
+            pass
+
     # Calculate timestamp for N hours ago
     timestamp = int((datetime.datetime.now() - datetime.timedelta(hours=hours_back)).timestamp())
     
@@ -79,21 +97,23 @@ def get_recent_entries(db_path: str, hours_back: int = 8) -> List[Dict[Any, Any]
     cursor.execute(query, (timestamp,))
     results = cursor.fetchall()
     
-    # Convert to list of dictionaries
+    # Convert to list of dictionaries and filter out processed entries
     entries = []
     for row in results:
-        raw_content = row['content']
-        entries.append({
-            'id': row['id'],
-            'title': row['title'],
-            'author': row['author'],
-            'content': clean_html_content(raw_content),
-            'raw_content': raw_content,
-            'link': row['link'],
-            'date': datetime.datetime.fromtimestamp(row['date']),
-            'category': row['category'] or 'Uncategorized',
-            'feed_name': row['feed_name']
-        })
+        entry_id = row['id']
+        if entry_id not in processed_entry_ids:
+            raw_content = row['content']
+            entries.append({
+                'id': entry_id,
+                'title': row['title'],
+                'author': row['author'],
+                'content': clean_html_content(raw_content),
+                'raw_content': raw_content,
+                'link': row['link'],
+                'date': datetime.datetime.fromtimestamp(row['date']),
+                'category': row['category'] or 'Uncategorized',
+                'feed_name': row['feed_name']
+            })
     
     conn.close()
     return entries

@@ -14,7 +14,7 @@ fi
 cd "$PROJECT_ROOT"
 
 # 获取参数，使用默认值
-HOURS=${1:-8}
+HOURS=${1:-48}
 
 # 运行 Python 脚本
 python -m src.main --hours "$HOURS"
