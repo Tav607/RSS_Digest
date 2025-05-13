@@ -94,11 +94,24 @@ def send_digest(digest_text: str) -> Dict[str, Any]:
     return response
 
 def _update_processed_ids(entry_ids: List[int]):
-    """Helper function to update the processed IDs file."""
+    """Helper function to update the processed IDs file incrementally and clean old IDs."""
     try:
+        existing_ids = []
+        if PROCESSED_IDS_FILE.exists():
+            with open(PROCESSED_IDS_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                if isinstance(data, list):
+                    existing_ids = data
+        # Combine existing and new IDs
+        all_ids_set = set(existing_ids) | set(entry_ids)
+        # Calculate cutoff timestamp for 48 hours ago
+        cutoff_ts = int((datetime.datetime.now() - datetime.timedelta(hours=48)).timestamp())
+        # Filter out IDs older than cutoff based on first 10 digits
+        filtered_ids = [eid for eid in all_ids_set if int(str(eid)[:10]) >= cutoff_ts]
+        # Write back to file
         with open(PROCESSED_IDS_FILE, 'w', encoding='utf-8') as f:
-            json.dump(entry_ids, f, ensure_ascii=False, indent=4)
-        logger.info(f"Successfully updated processed IDs file with {len(entry_ids)} entries: {PROCESSED_IDS_FILE}")
+            json.dump(filtered_ids, f, ensure_ascii=False, indent=4)
+        logger.info(f"Successfully updated processed IDs file with {len(filtered_ids)} entries: {PROCESSED_IDS_FILE}")
     except Exception as e:
         logger.error(f"Failed to update processed IDs file {PROCESSED_IDS_FILE}: {e}")
 
@@ -133,18 +146,37 @@ def run_digest_process(hours_back: int = None, send: bool = True) -> str:
         
     logger.info(f"Found {len(entries)} new entries in the past {hours_back} hours (after filtering)")
     
-    # Generate digest
-    digest = generate_digest(entries)
+    # Attempt digest generation with retry
+    max_attempts = 2
+    attempt = 0
+    digest = ""
+    error_message = ""
+    while attempt < max_attempts:
+        attempt += 1
+        logger.info(f"Generating digest attempt {attempt}/{max_attempts}")
+        digest = generate_digest(entries)
+        # Check for failure indicators
+        if digest and digest.strip() and not any(ind in digest for ind in ["Failed to generate digest", "无法生成摘要"]):
+            break
+        error_message = digest or "Empty digest"
+        logger.error(f"Digest generation attempt {attempt} failed: {error_message}")
+        if attempt < max_attempts:
+            logger.info("Retrying digest generation...")
 
-    # Check if digest generation was successful before updating processed IDs
-    if "Failed to generate digest" not in digest and digest.strip():
-        current_entry_ids = [entry['id'] for entry in entries]
-        _update_processed_ids(current_entry_ids)
-        
-        # Send digest if requested
+    # Final check for failure
+    if not digest or any(ind in digest for ind in ["Failed to generate digest", "无法生成摘要"]):
+        logger.error(f"Digest generation failed after {max_attempts} attempts. Not updating processed IDs.")
         if send:
-            send_digest(digest)
-    else:
-        logger.error("Digest generation failed or produced empty content. Processed IDs will not be updated.")
+            # Send error message via Telegram
+            telegram = TelegramSender(bot_token=TELEGRAM_BOT_TOKEN, chat_id=TELEGRAM_CHAT_ID)
+            telegram.send_message(f"Digest generation failed after {max_attempts} attempts. Error: {error_message}")
+        return digest
+
+    # Digest generated successfully
+    current_entry_ids = [entry['id'] for entry in entries]
+    _update_processed_ids(current_entry_ids)
+
+    if send:
+        send_digest(digest)
     
     return digest 
