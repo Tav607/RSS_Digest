@@ -1,203 +1,149 @@
 # RSS Digest Generator
 
-一个自动化的RSS摘要生成器，可以从FreshRSS获取文章，使用AI进行分类摘要，并通过Telegram发送。
+An automated RSS digest generator that fetches articles from FreshRSS, categorizes and summarizes them using AI, and sends the digest via Telegram.
 
-## 目录结构
+## Directory Structure
 
 ```
 .
-├── logs/                   # 日志文件目录
-├── scripts/                # 脚本文件目录
-│   ├── run.sh              # 运行脚本
-│   └── setup.sh            # 安装配置脚本
-├── src/                    # 源代码目录
-│   ├── config/             # 配置目录
-│   │   ├── config.py       # 配置文件
-│   │   ├── .env            # 环境变量文件
-│   │   └── .env.example    # 环境变量示例文件
-│   ├── services/           # 业务服务目录
-│   │   └── digest_service.py   # 摘要生成服务
-│   ├── utils/              # 工具类目录
-│   │   ├── ai_utils.py     # AI处理工具
-│   │   ├── db_utils.py     # 数据库工具
-│   │   ├── telegram_utils.py   # Telegram发送工具
-│   │   └── system_prompt.md  # 系统提示文件
-│   ├── __init__.py         # 包初始化文件
-│   └── main.py             # 主程序入口
-├── requirements.txt        # 依赖项列表
-├── README.md               # 项目说明文件
-└── crontab.example         # 定时任务配置示例
+├── logs/                   # Log file directory
+├── scripts/                # Utility scripts
+│   ├── run.sh              # Main execution script
+│   └── setup.sh            # Installation and setup script
+├── src/                    # Source code
+│   ├── config/             # Configuration files
+│   │   ├── config.py       # Main configuration
+│   │   ├── .env            # Environment variables (gitignored)
+│   │   └── .env.example    # Environment variable template
+│   ├── services/           # Business logic
+│   │   └── digest_service.py   # Digest generation service
+│   ├── utils/              # Helper utilities
+│   │   ├── ai_utils.py     # AI processing utility
+│   │   ├── db_utils.py     # Database interaction utility
+│   │   ├── telegram_utils.py   # Telegram notification utility
+│   │   └── system_prompt.md  # System prompt for the AI model
+│   ├── __init__.py         # Package initializer
+│   └── main.py             # Main application entry point
+├── requirements.txt        # Python dependencies
+├── README.md               # This file
+└── crontab.example         # Example crontab configuration
 ```
 
-## 安装与配置
+## Features
 
-1. 克隆本仓库
-2. 运行安装脚本:
-   ```
-   ./scripts/setup.sh
-   ```
-3. 编辑配置文件:
-   ```
-   nano src/config/.env
-   ```
-4. 确保你的FreshRSS数据库路径正确配置，以及Telegram和AI API信息已设置
+- Reads recent RSS entries for a specified user from a FreshRSS database.
+- Uses an AI model (e.g., OpenAI's GPT-4) to process and summarize content.
+- Categorizes content by topics (AI, Tech, World News, etc.).
+- Generates a digest in bullet-point format.
+- Sends the digest via a Telegram Bot.
+- Supports scheduled execution via cron jobs.
 
-## 使用方法
+## Prerequisites
 
-运行RSS摘要生成器:
-```
+- Python 3.7+
+- A FreshRSS instance with database access.
+- An OpenAI compatible AI API key.
+- A Telegram Bot token and chat ID.
+
+## Installation & Setup
+
+1.  **Clone the repository:**
+    ```bash
+    git clone https://your-repository-url/rss_digest.git
+    cd rss_digest
+    ```
+
+2.  **Run the setup script:**
+    This script will create a Python virtual environment and install the required dependencies.
+    ```bash
+    ./scripts/setup.sh
+    ```
+
+3.  **Configure environment variables:**
+    Copy the example `.env` file. **Important:** The `.env` file must be located in the `src/config/` directory.
+    ```bash
+    cp src/config/.env.example src/config/.env
+    ```
+
+4.  **Edit the configuration file:**
+    Fill in your details in `src/config/.env`.
+    ```bash
+    nano src/config/.env
+    ```
+    You need to set:
+    - `FRESHRSS_DB_PATH`: The absolute path to your FreshRSS SQLite database file.
+    - `USERNAME`: The FreshRSS user for whom to fetch articles.
+    - `OPENROUTER_API_KEY`: Your AI provider API key.
+    - `TELEGRAM_BOT_TOKEN`: Your Telegram bot token.
+    - `TELEGRAM_CHAT_ID`: The destination chat ID for the digest.
+
+## Usage
+
+### Using the Run Script
+
+The easiest way to run the generator is by using the provided script.
+
+```bash
 ./scripts/run.sh [hours_back]
 ```
 
-参数:
-- `hours_back`: 可选，查找几小时前的文章，默认为配置文件中的设置(8小时)
+- **`hours_back`**: (Optional) The number of hours to look back for new articles. Defaults to the value in your configuration (8 hours).
 
-### 命令行选项
-
-也可以直接使用Python运行并传递更多参数:
+Example:
+```bash
+# Generate a digest for articles from the last 12 hours
+./scripts/run.sh 12
 ```
+
+### Direct Execution with Python
+
+You can also run the main script directly with more granular control. Make sure you have activated the virtual environment first (`source venv/bin/activate`).
+
+```bash
+python -m src.main [options]
+```
+
+**Options:**
+
+- `--hours <number>`: Specify the look-back period in hours.
+- `--no-send`: Generate the digest but do not send it via Telegram.
+- `--save`: Save the generated digest to a `.txt` file in the project root.
+- `--debug`: Enable detailed debug logging.
+
+Example:
+```bash
 python -m src.main --hours 12 --save --debug
 ```
 
-选项:
-- `--hours`: 同上，指定查找几小时前的文章
-- `--no-send`: 生成摘要但不通过Telegram发送
-- `--save`: 将摘要保存到文件
-- `--debug`: 启用调试日志输出
+## Automation with Cron
 
-## 自动化运行
+You can automate the digest generation using a cron job.
 
-编辑crontab来设置自动运行:
-```
-crontab -e
-```
+1.  Open your crontab for editing:
+    ```bash
+    crontab -e
+    ```
 
-示例 (每天早上7点和晚上7点运行):
-```
-0 7,19 * * * cd /path/to/repository && ./scripts/run.sh 12
-```
+2.  Add a new line to schedule the script. Refer to `crontab.example` for more samples.
 
-## 依赖项
+    ```crontab
+    # Run every day at 7 AM and 7 PM, generating a digest for the last 12 hours.
+    0 7,19 * * * cd /path/to/your/rss_digest && ./scripts/run.sh 12
+    ```
+    **Important:** Make sure to use the absolute path to your project directory.
 
-- Python 3.7+
-- FreshRSS 实例和数据库
-- OpenAI 或兼容的AI API
-- Telegram 机器人
+## Advanced Configuration
 
-## 功能特性
+You can customize the application's behavior by editing `src/config/config.py`:
 
-- 从FreshRSS数据库读取指定用户的最近RSS条目
-- 使用AI模型（如OpenAI的GPT-4）处理和总结内容
-- 按主题（AI、科技、世界新闻等）分类整理内容
-- 生成中文简报，以bullet points形式呈现
-- 通过Telegram Bot发送简报
-- 支持自动定时运行
+- **AI Model:** Change `AI_MODEL` to use a different model (e.g., `gpt-4`, `gpt-3.5-turbo`).
+- **API Provider:** Modify `AI_BASE_URL` to use a different API endpoint.
+- **Categorization:** Adjust the keywords and logic for categorization within `digest_service.py`.
+- **Output Language:** Modify the `system_prompt.md` to change the output language or format.
 
-## 系统要求
+## Troubleshooting
 
-- Python 3.6+
-- FreshRSS安装并有数据库访问权限
-- OpenAI API账户和API密钥
-- Telegram Bot
-
-## 安装
-
-1. 克隆本仓库
-
-```bash
-git clone https://your-repository-url/rss_digest.git
-cd rss_digest
-```
-
-2. 安装依赖:
-
-```bash
-pip install -r requirements.txt
-```
-
-3. 配置环境变量:
-
-```bash
-cp .env.example .env
-```
-
-4. 编辑`.env`文件，填入你的配置信息：
-   - FreshRSS数据库路径
-   - OpenAI API密钥
-   - Telegram Bot Token和聊天ID
-
-## 使用方法
-
-### 基本用法
-
-```bash
-python main.py
-```
-
-这将:
-- 读取过去8小时的RSS条目
-- 生成简报
-- 通过Telegram发送
-
-### 命令行选项
-
-```bash
-# 指定时间范围（过去12小时）
-python main.py --hours 12
-
-# 生成但不发送简报
-python main.py --no-send
-
-# 将简报保存到文件
-python main.py --save
-
-# 启用调试日志
-python main.py --debug
-```
-
-### 使用脚本运行
-
-项目提供了运行脚本:
-
-```bash
-# 赋予执行权限
-chmod +x run.sh
-
-# 运行脚本
-./run.sh
-```
-
-## 定时运行
-
-你可以使用crontab设置定时运行:
-
-```bash
-# 编辑crontab
-crontab -e
-
-# 每8小时运行一次
-0 */8 * * * cd /path/to/rss_digest && ./run.sh
-```
-
-参考`crontab.example`文件获取更多样例。
-
-## Telegram Bot设置
-
-1. 通过Telegram的@BotFather创建新Bot，获取Bot Token
-2. 找到你的聊天ID (可使用@userinfobot)
-3. 在`.env`文件中填入这些信息
-
-## 高级配置
-
-你可以通过编辑`config.py`自定义：
-
-- AI模型（gpt-4, gpt-3.5-turbo等）
-- API提供商
-- 分类关键词
-- 输出语言
-- 简报长度和格式
-
-## 故障排除
-
-如果遇到问题，请检查：
-- `.env`
+If you encounter issues, please check the following:
+- Ensure all variables in `src/config/.env` are correctly set.
+- Verify that the path to your FreshRSS database is correct and the file is readable.
+- Check the log files in the `logs/` directory for detailed error messages (`rss_digest.log` and `api_debug.log`).
