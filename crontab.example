@@ -1,15 +1,15 @@
-# RSS Digest Generator 定时任务示例
-# 编辑后可用 crontab < crontab.example 导入
+# RSS Digest Generator crontab example
+# Edit and import with: crontab < crontab.example
 
-# 每天早上7点和晚上7点运行，查找过去12小时的文章
+# Run daily at 7 AM and 7 PM, fetching articles from the past 12 hours
 0 7,19 * * * cd /path/to/rss_digest && ./scripts/run.sh 12
 
-# 每周一早上9点运行，查找过去72小时的文章（周末汇总）
+# Run every Monday at 9 AM, fetching articles from the past 72 hours (weekend summary)
 0 9 * * 1 cd /path/to/rss_digest && ./scripts/run.sh 72
 
-# 每天晚上10点运行，使用debug模式并保存到文件
+# Run daily at 10 PM with debug mode and save to file
 0 22 * * * cd /path/to/rss_digest && python -m src.main --hours 24 --save --debug
 
-# 安装此定时任务:
+# To install this crontab:
 # crontab -e
-# (粘贴这些行并保存) 
+# (paste these lines and save)

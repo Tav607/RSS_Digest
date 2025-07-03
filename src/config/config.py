@@ -19,9 +19,9 @@ USERNAME = os.getenv('USERNAME')
 HOURS_BACK = int(os.getenv('HOURS_BACK', "8"))
 
 # AI API configuration
-AI_API_KEY = os.getenv('OPENROUTER_API_KEY')
-AI_MODEL = os.getenv('OPENROUTER_MODEL_ID')  
-AI_BASE_URL = os.getenv('OPENROUTER_BASE_URL')  
+AI_API_KEY = os.getenv('GEMINI_API_KEY')
+AI_MODEL = os.getenv('GEMINI_MODEL_ID')  
+AI_BASE_URL = os.getenv('GEMINI_BASE_URL')  
 
 # Telegram Bot configuration
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')

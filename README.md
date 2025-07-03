@@ -73,7 +73,7 @@ An automated RSS digest generator that fetches articles from FreshRSS, categoriz
     You need to set:
     - `FRESHRSS_DB_PATH`: The absolute path to your FreshRSS SQLite database file.
     - `USERNAME`: The FreshRSS user for whom to fetch articles.
-    - `OPENROUTER_API_KEY`: Your AI provider API key.
+    - `AI_API_KEY`: Your AI provider API key.
     - `TELEGRAM_BOT_TOKEN`: Your Telegram bot token.
     - `TELEGRAM_CHAT_ID`: The destination chat ID for the digest.
 
