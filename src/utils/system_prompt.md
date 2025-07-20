@@ -8,7 +8,7 @@
 ## Semi
 - ...
 
-## Smartphone & PC
+## Smartphone
 - ...
 
 ## Other Tech
@@ -28,9 +28,9 @@
 4. 不要原始标题、链接。
 5. 全文 ≤ 2000 字。
 6. 分类原则：
-    - AI：模型、算法、产业链、监管。
-    - Semi：半导体公司、工艺、材料、供应链。
-    - Smartphone & PC：手机、电脑、操作系统及配套生态。
-    - Other Tech：消费电子、汽车科技、量子、航天等。
+    - AI：模型、算法、应用、产业链、监管。**重点关注OpenAI, Google, Anthropic。**
+    - Semi：半导体公司、工艺、材料、供应链。**重点关注Nvidia, Broadcom, Qualcomm。**
+    - Smartphone：智能手机、操作系统及配套生态。**重点关注Apple。**
+    - Other Tech：云计算、消费电子、加密货币、汽车科技等。
     - World News：宏观政策、国际经贸、地缘政治。
 7. 如遇无法归入以上五类但价值低的新闻，可忽略；价值高则归入 Misc. 栏目。
