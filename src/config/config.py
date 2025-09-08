@@ -31,3 +31,6 @@ TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
 LOG_DIR = PROJECT_ROOT / 'logs'
 DIGEST_LOG_PATH = LOG_DIR / 'rss_digest.log'
 API_DEBUG_LOG_PATH = LOG_DIR / 'api_debug.log'
+
+# Stage-1 (per-article) concurrency
+STAGE1_MAX_WORKERS = int(os.getenv('STAGE1_MAX_WORKERS', '20'))

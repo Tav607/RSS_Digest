@@ -21,7 +21,8 @@ An automated RSS digest generator that fetches articles from FreshRSS, categoriz
 │   │   ├── ai_utils.py     # AI processing utility
 │   │   ├── db_utils.py     # Database interaction utility
 │   │   ├── telegram_utils.py   # Telegram notification utility
-│   │   └── system_prompt.md  # System prompt for the AI model
+│   │   ├── system_prompt.md  # Stage-2 (global digest) system prompt
+│   │   └── system_prompt_stage1.md  # Stage-1 (per-article) system prompt
 │   ├── __init__.py         # Package initializer
 │   └── main.py             # Main application entry point
 ├── requirements.txt        # Python dependencies
@@ -32,7 +33,8 @@ An automated RSS digest generator that fetches articles from FreshRSS, categoriz
 ## Features
 
 - Reads recent RSS entries for a specified user from a FreshRSS database.
-- Uses an AI model (e.g., OpenAI's GPT-4) to process and summarize content.
+- Two-stage pipeline: per-article summaries (parallel) then a global categorized digest.
+- Uses an AI model (e.g., OpenAI-compatible endpoint) to process and summarize content.
 - Categorizes content by topics (AI, Tech, World News, etc.).
 - Generates a digest in bullet-point format.
 - Sends the digest via a Telegram Bot.
@@ -140,6 +142,7 @@ You can customize the application's behavior by editing `src/config/config.py`:
 - **API Provider:** Modify `AI_BASE_URL` to use a different API endpoint.
 - **Categorization:** Adjust the keywords and logic for categorization within `digest_service.py`.
 - **Output Language:** Modify the `system_prompt.md` to change the output language or format.
+- **Stage-1 Concurrency:** Control per-article parallelism via `STAGE1_MAX_WORKERS` (default `20`).
 
 ## Troubleshooting
 
@@ -147,3 +150,8 @@ If you encounter issues, please check the following:
 - Ensure all variables in `src/config/.env` are correctly set.
 - Verify that the path to your FreshRSS database is correct and the file is readable.
 - Check the log files in the `logs/` directory for detailed error messages (`rss_digest.log` and `api_debug.log`).
+
+## Notes
+
+- The application always uses a two-stage pipeline: per-article summaries (parallel) then a global categorized digest.
+- For dry runs without sending to Telegram, use `--no-send` with `src.main`, and optionally `--save` to persist output.

@@ -15,7 +15,7 @@ from src.config import (
     TELEGRAM_BOT_TOKEN,
     TELEGRAM_CHAT_ID, 
     HOURS_BACK,
-    PROJECT_ROOT
+    PROJECT_ROOT,
 )
 from src.utils import (
     get_recent_entries, 
@@ -39,17 +39,31 @@ def generate_digest(entries: List[Dict[Any, Any]]) -> str:
     Returns:
         Generated digest text including timestamp header
     """
-    logger.info(f"Generating digest from {len(entries)} entries using single AI call.")
-    
+    logger.info(
+        f"Generating digest from {len(entries)} entries using two-stage pipeline"
+    )
+
     # Initialize AI processor
     ai_processor = AIProcessor(
         api_key=AI_API_KEY,
         model=AI_MODEL,
-        base_url=AI_BASE_URL
+        base_url=AI_BASE_URL,
     )
-    
-    # Generate the full digest
-    ai_generated_digest = ai_processor.generate_digest(entries=entries)
+    # Stage 1: summarize each article individually
+    logger.info("Stage1: Summarizing each article individually...")
+    merged_summaries = ai_processor.summarize_articles(entries)
+    if not merged_summaries or not merged_summaries.strip():
+        logger.error("Stage1 produced empty summaries.")
+        return "Failed to generate digest: Stage1 produced no summaries."
+
+    # Stage 2: finalize digest from stage1 abstracts
+    logger.info("Stage2: Finalizing digest from per-article summaries...")
+    ai_generated_digest = ai_processor.finalize_digest_from_article_summaries(
+        merged_summaries
+    )
+    if not ai_generated_digest or not ai_generated_digest.strip():
+        logger.error("Stage2 produced empty digest.")
+        return "Failed to generate digest: Stage2 returned empty content."
 
     if not ai_generated_digest or len(ai_generated_digest.strip()) == 0:
         logger.error("AIProcessor generated an empty or invalid digest.")

@@ -16,6 +16,8 @@ def _escape_markdown_v2_content(text: str) -> str:
     # Escape the characters by adding a preceding \
     return re.sub(escape_chars_pattern, r'\\\1', text)
 
+# Note: Bold preservation is not handled specially; text is escaped uniformly.
+
 def _process_markdown_structure_and_escape(text: str) -> str:
     """Processes specific markdown structure (#, ##, -) and escapes the rest for MarkdownV2."""
     processed_lines = []

@@ -9,14 +9,14 @@ from .config import (
     TELEGRAM_CHAT_ID,
     PROJECT_ROOT,
     DIGEST_LOG_PATH,
-    API_DEBUG_LOG_PATH
+    API_DEBUG_LOG_PATH,
+    STAGE1_MAX_WORKERS,
 )
 
 __all__ = [
     'FRESHRSS_DB_PATH',
     'USERNAME',
     'HOURS_BACK',
-    'AI_PROVIDER',
     'AI_API_KEY',
     'AI_MODEL',
     'AI_BASE_URL',
@@ -24,5 +24,6 @@ __all__ = [
     'TELEGRAM_CHAT_ID',
     'PROJECT_ROOT',
     'DIGEST_LOG_PATH',
-    'API_DEBUG_LOG_PATH'
+    'API_DEBUG_LOG_PATH',
+    'STAGE1_MAX_WORKERS',
 ] 
