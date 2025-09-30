@@ -20,7 +20,10 @@ HOURS_BACK = int(os.getenv('HOURS_BACK', "8"))
 
 # AI API configuration
 AI_API_KEY = os.getenv('GEMINI_API_KEY')
-AI_MODEL = os.getenv('GEMINI_MODEL_ID')  
+_stage2_primary = os.getenv('GEMINI_STAGE2_MODEL_ID')
+_stage2_legacy = os.getenv('GEMINI_MODEL_ID')
+AI_STAGE2_MODEL = _stage2_primary or _stage2_legacy
+AI_STAGE1_MODEL = os.getenv('GEMINI_STAGE1_MODEL_ID') or AI_STAGE2_MODEL
 AI_BASE_URL = os.getenv('GEMINI_BASE_URL')  
 
 # Telegram Bot configuration

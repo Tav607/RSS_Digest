@@ -48,4 +48,7 @@
 
 ## Configuration
 - Set `STAGE1_MAX_WORKERS` in `src/config/.env` to control parallelism (default `20`).
-- All other behavior uses defaults from the codebase; no “mode” switch is required (single‑pass removed).
+- Two-stage model configuration lives in `.env`:
+  - `GEMINI_STAGE2_MODEL_ID` (or legacy `GEMINI_MODEL_ID`) powers the global digest.
+  - Optional `GEMINI_STAGE1_MODEL_ID` overrides the per-article summarizer; defaults to Stage 2 when omitted.
+- All other behavior uses defaults from the codebase; no “mode” switch is required (single-pass removed).

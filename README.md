@@ -76,6 +76,8 @@ An automated RSS digest generator that fetches articles from FreshRSS, categoriz
     - `FRESHRSS_DB_PATH`: The absolute path to your FreshRSS SQLite database file.
     - `USERNAME`: The FreshRSS user for whom to fetch articles.
     - `AI_API_KEY`: Your AI provider API key.
+    - `GEMINI_STAGE2_MODEL_ID`: Model for the stage-2 global digest (fallback to `GEMINI_MODEL_ID`).
+    - `GEMINI_STAGE1_MODEL_ID`: (Optional) Model for per-article summaries; defaults to the stage-2 model when omitted.
     - `TELEGRAM_BOT_TOKEN`: Your Telegram bot token.
     - `TELEGRAM_CHAT_ID`: The destination chat ID for the digest.
 
@@ -138,7 +140,8 @@ You can automate the digest generation using a cron job.
 
 You can customize the application's behavior by editing `src/config/config.py`:
 
-- **AI Model:** Change `AI_MODEL` to use a different model (e.g., `gpt-4`, `gpt-3.5-turbo`).
+- **Stage-2 Model:** Change `GEMINI_STAGE2_MODEL_ID` (or legacy `GEMINI_MODEL_ID`) to use a different provider model for the final digest.
+- **Stage-1 Model:** Optionally set `GEMINI_STAGE1_MODEL_ID` to override the per-article summarization model.
 - **API Provider:** Modify `AI_BASE_URL` to use a different API endpoint.
 - **Categorization:** Adjust the keywords and logic for categorization within `digest_service.py`.
 - **Output Language:** Modify the `system_prompt.md` to change the output language or format.

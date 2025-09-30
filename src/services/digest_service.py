@@ -10,7 +10,8 @@ import json
 from src.config import (
     FRESHRSS_DB_PATH, 
     AI_API_KEY, 
-    AI_MODEL, 
+    AI_STAGE1_MODEL,
+    AI_STAGE2_MODEL,
     AI_BASE_URL,
     TELEGRAM_BOT_TOKEN,
     TELEGRAM_CHAT_ID, 
@@ -46,8 +47,9 @@ def generate_digest(entries: List[Dict[Any, Any]]) -> str:
     # Initialize AI processor
     ai_processor = AIProcessor(
         api_key=AI_API_KEY,
-        model=AI_MODEL,
+        stage2_model=AI_STAGE2_MODEL,
         base_url=AI_BASE_URL,
+        stage1_model=AI_STAGE1_MODEL,
     )
     # Stage 1: summarize each article individually
     logger.info("Stage1: Summarizing each article individually...")

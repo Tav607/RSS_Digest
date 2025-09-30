@@ -70,23 +70,29 @@ class AIProcessor:
     """
     通过 AI 模型处理内容并生成摘要的类。
     """
-    def __init__(self, api_key: str, model: str, base_url: str):
+    def __init__(self, api_key: str, stage2_model: str, base_url: str, stage1_model: str = None):
         """
         初始化 AI 处理器。
 
         Args:
             api_key: AI 服务的 API 密钥。
-            model: 要使用的 AI 模型。
+            stage2_model: 第二阶段（全局汇总）默认使用的模型。
             base_url: API 的基础 URL。
         """
-        self.model = model
+        self.stage2_model = stage2_model
+        self.stage1_model = stage1_model or stage2_model
         self.api_key = api_key
         self.base_url = base_url
         self.client = OpenAI(
             base_url=base_url,
             api_key=api_key
         )
-        api_logger.debug(f"AIProcessor initialized with model: {model}, base_url: {base_url}")
+        api_logger.debug(
+            "AIProcessor initialized with stage1_model=%s, stage2_model=%s, base_url=%s",
+            self.stage1_model,
+            self.stage2_model,
+            base_url,
+        )
 
     def _truncate_content(self, content: str, max_chars: int = 4000) -> str:
         """将内容截断到合理长度"""
@@ -121,7 +127,7 @@ class AIProcessor:
 
         try:
             completion = self.client.chat.completions.create(
-                model=self.model,
+                model=self.stage1_model,
                 messages=[
                     {"role": "system", "content": STAGE1_SYSTEM_PROMPT},
                     {"role": "user", "content": user_prompt}
@@ -160,7 +166,7 @@ class AIProcessor:
             for attempt in range(1, max_attempts + 1):
                 try:
                     completion = local_client.chat.completions.create(
-                        model=self.model,
+                        model=self.stage1_model,
                         messages=[
                             {"role": "system", "content": STAGE1_SYSTEM_PROMPT},
                             {"role": "user", "content": user_prompt},
@@ -224,7 +230,7 @@ class AIProcessor:
             return ""
         try:
             completion = self.client.chat.completions.create(
-                model=self.model,
+                model=self.stage2_model,
                 messages=[
                     {"role": "system", "content": SYSTEM_PROMPT},
                     {
