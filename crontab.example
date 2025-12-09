@@ -1,14 +1,11 @@
 # RSS Digest Generator crontab example
 # Edit and import with: crontab < crontab.example
 
-# Run daily at 7 AM and 7 PM, fetching articles from the past 12 hours
-0 7,19 * * * cd /path/to/rss_digest && ./scripts/run.sh 12
+# Run on weekdays (Mon-Fri) at 9:30 & 21:30
+30 9,21 * * 1-5 cd /path/to/rss_digest && ./scripts/run.sh
 
-# Run every Monday at 9 AM, fetching articles from the past 72 hours (weekend summary)
-0 9 * * 1 cd /path/to/rss_digest && ./scripts/run.sh 72
-
-# Run daily at 10 PM with debug mode and save to file
-0 22 * * * cd /path/to/rss_digest && python -m src.main --hours 24 --save --debug
+# Run on weekends (Sat-Sun) at 20:00
+0 20 * * 6,0 cd /path/to/rss_digest && ./scripts/run.sh
 
 # To install this crontab:
 # crontab -e

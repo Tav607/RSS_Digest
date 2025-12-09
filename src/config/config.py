@@ -11,7 +11,7 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 # Load environment variables from .env file if it exists
 env_path = Path(__file__).parent / '.env'
 if env_path.exists():
-    load_dotenv(dotenv_path=env_path)
+    load_dotenv(dotenv_path=env_path, override=True)
 
 # FreshRSS database configuration
 FRESHRSS_DB_PATH = os.getenv('FRESHRSS_DB_PATH')

@@ -11,20 +11,16 @@ echo "项目路径: $PROJECT_ROOT"
 # 创建目录（如果不存在）
 mkdir -p "$PROJECT_ROOT/logs"
 
-# 检查是否存在虚拟环境
-if [ ! -d "$PROJECT_ROOT/venv" ]; then
-    echo "创建Python虚拟环境..."
-    python3 -m venv "$PROJECT_ROOT/venv"
-else
-    echo "虚拟环境已存在，跳过创建步骤。"
+# 检查是否安装了 uv
+if ! command -v uv &> /dev/null; then
+    echo "错误: 未找到 uv，请先安装 uv: https://docs.astral.sh/uv/getting-started/installation/"
+    exit 1
 fi
 
-# 激活虚拟环境
-source "$PROJECT_ROOT/venv/bin/activate"
-
-# 安装依赖
-echo "安装Python依赖项..."
-pip install -r "$PROJECT_ROOT/requirements.txt"
+# 使用 uv sync 安装依赖（会自动创建 .venv）
+echo "使用 uv 安装依赖..."
+cd "$PROJECT_ROOT"
+uv sync
 
 # 检查是否存在.env文件
 if [ ! -f "$PROJECT_ROOT/src/config/.env" ]; then
@@ -34,9 +30,6 @@ if [ ! -f "$PROJECT_ROOT/src/config/.env" ]; then
 else
     echo ".env文件已存在，跳过创建步骤。"
 fi
-
-# 退出虚拟环境
-deactivate
 
 echo "安装完成！"
 echo "请确保您已经编辑了 src/config/.env 文件并配置了必要的参数。"

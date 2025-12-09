@@ -8,16 +8,15 @@
   - `src/utils/`: helpers (`ai_utils.py`, `db_utils.py`, `telegram_utils.py`, `system_prompt.md`, `system_prompt_stage1.md`).
 - `scripts/`: shell helpers (`setup.sh`, `run.sh`).
 - `logs/`: runtime logs and state (e.g., `processed_entry_ids.json`).
-- `requirements.txt`: Python dependencies.
+- `pyproject.toml`: Python dependencies (managed by uv).
 
 ## Build, Test, and Development
-- Setup env: `./scripts/setup.sh` (creates `venv/` and installs deps).
-- Activate venv: `source venv/bin/activate`.
-- Run locally: `./scripts/run.sh [hours_back]` or `python -m src.main --hours 12 --save --debug`.
+- Setup env: `./scripts/setup.sh` (uses uv to install deps).
+- Run locally: `./scripts/run.sh [hours_back]` or `uv run python -m src.main --hours 12 --save --debug`.
 - Config: copy `src/config/.env.example` to `src/config/.env` and fill values.
 
 ## Coding Style & Naming
-- Python 3.7+; 4‑space indentation; UTF‑8.
+- Python 3.12+; 4‑space indentation; UTF‑8.
 - Naming: modules/files `lower_snake_case.py`; functions/vars `lower_snake_case`; classes `PascalCase`.
 - Imports: absolute within package (`from src.utils import ...`).
 - Logging: use `logging` (no print) and prefer structured messages.
@@ -27,7 +26,7 @@
 - Framework: pytest recommended (no suite in repo yet).
 - Layout: place tests under `tests/` mirroring module paths, e.g., `tests/services/test_digest_service.py`.
 - Naming: files `test_*.py`, functions `test_*`.
-- Run: `pytest -q` (after installing pytest in venv).
+- Run: `uv run pytest -q`.
 - Minimum: add smoke tests for `run_digest_process(hours_back, send=False)` and for Telegram text processing; avoid network/secret use by mocking.
 
 ## Commit & Pull Requests

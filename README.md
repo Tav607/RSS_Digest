@@ -25,7 +25,7 @@ An automated RSS digest generator that fetches articles from FreshRSS, categoriz
 │   │   └── system_prompt_stage1.md  # Stage-1 (per-article) system prompt
 │   ├── __init__.py         # Package initializer
 │   └── main.py             # Main application entry point
-├── requirements.txt        # Python dependencies
+├── pyproject.toml          # Python dependencies (managed by uv)
 ├── README.md               # This file
 └── crontab.example         # Example crontab configuration
 ```
@@ -42,7 +42,8 @@ An automated RSS digest generator that fetches articles from FreshRSS, categoriz
 
 ## Prerequisites
 
-- Python 3.7+
+- Python 3.12+
+- [uv](https://docs.astral.sh/uv/) package manager
 - A FreshRSS instance with database access.
 - An OpenAI compatible AI API key.
 - A Telegram Bot token and chat ID.
@@ -56,7 +57,7 @@ An automated RSS digest generator that fetches articles from FreshRSS, categoriz
     ```
 
 2.  **Run the setup script:**
-    This script will create a Python virtual environment and install the required dependencies.
+    This script will use uv to install the required dependencies.
     ```bash
     ./scripts/setup.sh
     ```
@@ -101,10 +102,10 @@ Example:
 
 ### Direct Execution with Python
 
-You can also run the main script directly with more granular control. Make sure you have activated the virtual environment first (`source venv/bin/activate`).
+You can also run the main script directly with more granular control using uv.
 
 ```bash
-python -m src.main [options]
+uv run python -m src.main [options]
 ```
 
 **Options:**
@@ -116,7 +117,7 @@ python -m src.main [options]
 
 Example:
 ```bash
-python -m src.main --hours 12 --save --debug
+uv run python -m src.main --hours 12 --save --debug
 ```
 
 ## Automation with Cron
