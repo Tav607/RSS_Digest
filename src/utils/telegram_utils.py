@@ -9,12 +9,42 @@ from typing import Dict, Any
 # 创建命名记录器
 logger = logging.getLogger(__name__)
 
+def _convert_markdown_bold_to_telegram(text: str) -> tuple[str, list[str]]:
+    """
+    Convert standard Markdown **bold** to Telegram MarkdownV2 bold markers.
+    Returns the text with bold content replaced by placeholders and the bold segments.
+    """
+    bold_segments = []
+
+    def replace_bold(match):
+        content = match.group(1)
+        bold_segments.append(content)
+        # Use a placeholder that won't be escaped
+        return f"\x00BOLD{len(bold_segments)-1}\x00"
+
+    # Match **text** (standard Markdown bold)
+    result = re.sub(r'\*\*([^*]+)\*\*', replace_bold, text)
+    return result, bold_segments
+
+
 def _escape_markdown_v2_content(text: str) -> str:
-    """Escapes MarkdownV2 special characters in a given string."""
+    """Escapes MarkdownV2 special characters in a given string, preserving **bold** as Telegram bold."""
+    # First, extract and protect bold segments
+    text_with_placeholders, bold_segments = _convert_markdown_bold_to_telegram(text)
+
     # Characters to escape: _ * [ ] ( ) ~ ` > # + - = | { } . !
     escape_chars_pattern = r'([_*\[\]()~`>#+=|{}.!-])'
     # Escape the characters by adding a preceding \
-    return re.sub(escape_chars_pattern, r'\\\1', text)
+    escaped_text = re.sub(escape_chars_pattern, r'\\\1', text_with_placeholders)
+
+    # Restore bold segments with proper Telegram MarkdownV2 formatting
+    for i, content in enumerate(bold_segments):
+        # Escape the content inside bold markers
+        escaped_content = re.sub(escape_chars_pattern, r'\\\1', content)
+        # Replace placeholder with Telegram bold format: *text*
+        escaped_text = escaped_text.replace(f"\x00BOLD{i}\x00", f"*{escaped_content}*")
+
+    return escaped_text
 
 # Note: Bold preservation is not handled specially; text is escaped uniformly.
 
