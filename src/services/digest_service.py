@@ -29,14 +29,47 @@ logger = logging.getLogger(__name__)
 
 # Define the path for storing processed entry IDs
 PROCESSED_IDS_FILE = PROJECT_ROOT / "logs" / "processed_entry_ids.json"
+# Define the path for storing digest history (for deduplication)
+DIGEST_HISTORY_FILE = PROJECT_ROOT / "logs" / "digest_history.json"
+# Number of recent digests to keep for deduplication
+DIGEST_HISTORY_LIMIT = 5
+
+
+def _load_digest_history() -> list[str]:
+    """Load recent digest history for deduplication."""
+    try:
+        if DIGEST_HISTORY_FILE.exists():
+            with open(DIGEST_HISTORY_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                if isinstance(data, list):
+                    return data
+    except Exception as e:
+        logger.error(f"Failed to load digest history: {e}")
+    return []
+
+
+def _save_digest_to_history(digest: str):
+    """Save digest to history, keeping only the most recent N entries."""
+    try:
+        history = _load_digest_history()
+        # Add new digest to the beginning
+        history.insert(0, digest)
+        # Keep only the most recent N entries
+        history = history[:DIGEST_HISTORY_LIMIT]
+        # Write back to file
+        with open(DIGEST_HISTORY_FILE, 'w', encoding='utf-8') as f:
+            json.dump(history, f, ensure_ascii=False, indent=2)
+        logger.info(f"Saved digest to history. Total history entries: {len(history)}")
+    except Exception as e:
+        logger.error(f"Failed to save digest to history: {e}")
 
 def generate_digest(entries: List[Dict[Any, Any]]) -> str:
     """
     Generate a digest from the RSS entries
-    
+
     Args:
         entries: List of entry dictionaries
-        
+
     Returns:
         Generated digest text including timestamp header
     """
@@ -58,10 +91,15 @@ def generate_digest(entries: List[Dict[Any, Any]]) -> str:
         logger.error("Stage1 produced empty summaries.")
         return "Failed to generate digest: Stage1 produced no summaries."
 
+    # Load digest history for deduplication
+    digest_history = _load_digest_history()
+    logger.info(f"Loaded {len(digest_history)} historical digests for deduplication")
+
     # Stage 2: finalize digest from stage1 abstracts
     logger.info("Stage2: Finalizing digest from per-article summaries...")
     ai_generated_digest = ai_processor.finalize_digest_from_article_summaries(
-        merged_summaries
+        merged_summaries,
+        digest_history=digest_history
     )
     if not ai_generated_digest or not ai_generated_digest.strip():
         logger.error("Stage2 produced empty digest.")
@@ -193,6 +231,9 @@ def run_digest_process(hours_back: int = None, send: bool = True) -> str:
     _update_processed_ids(current_entry_ids)
 
     if send:
-        send_digest(digest)
-    
+        response = send_digest(digest)
+        # Save to history only after successful send
+        if response.get("success"):
+            _save_digest_to_history(digest)
+
     return digest 

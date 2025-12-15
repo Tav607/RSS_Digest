@@ -41,13 +41,17 @@ except Exception as e:
 
 # 读取第一阶段（单篇文章摘要）提示词
 STAGE1_SYSTEM_PROMPT = (
-    "你是资深新闻编辑。基于输入的一篇完整文章（含标题、来源、正文），"
-    "请输出该篇文章的要点列表，用中文，严格遵守以下规范：\n"
-    "- 生成 1-4 条要点，按重要度排序；\n"
-    "- 每条使用‘主体 + 动作 + 影响（媒体）’的一行句式，≤ 50 字；\n"
-    "- 不要输出原始标题、链接或多余说明；\n"
-    "- 只保留增量信息，避免陈词与背景复述；\n"
-    "- 若信息不足，可少于 1-4 条，但不要杜撰。"
+    "你是资深新闻编辑。基于输入的一篇完整文章（含标题、来源、正文），提炼要点列表。\n\n"
+    "规则：\n"
+    "1. 生成 1-3 条要点，按重要度排序；信息不足可少于此数，但不要杜撰。\n"
+    "2. 每条采用"**主体** + 动作 + 目的/影响"句式，≤ 40 字。\n"
+    "3. 主体必须是明确的公司/机构/产品名词，英文公司名保持英文（如 Apple、Nvidia、OpenAI）。\n"
+    "4. 只保留增量信息，避免背景铺陈与主观评价。\n"
+    "5. 末尾标注分类建议：[AI] [Semi] [Smartphone] [Other Tech] [World News] [Misc]（可多选）\n\n"
+    "输出格式：\n"
+    "- **主体** 动作内容（≤40字）\n"
+    "- ...\n"
+    "[分类: AI, Smartphone]"
 )
 try:
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -222,27 +226,50 @@ class AIProcessor:
     # -------------------------
     # 第二阶段：基于文章摘要进行全局汇总
     # -------------------------
-    def finalize_digest_from_article_summaries(self, merged_summaries: str) -> str:
+    def finalize_digest_from_article_summaries(
+        self, merged_summaries: str, digest_history: list[str] = None
+    ) -> str:
         """
         采用现有的 system prompt，对第一阶段的合并摘要做全局分类与排序，生成终稿。
+
+        Args:
+            merged_summaries: 第一阶段合并的文章摘要
+            digest_history: 最近几次的历史摘要，用于去重
         """
         if not merged_summaries or not merged_summaries.strip():
             return ""
+
+        # Build user prompt with optional history context
+        user_content_parts = []
+
+        # Add history context if available
+        if digest_history:
+            history_text = "\n\n---\n\n".join(digest_history)
+            user_content_parts.append(
+                "以下是最近已发送的摘要（用于去重参考）：\n"
+                "--- HISTORY_START ---\n"
+                f"{history_text}\n"
+                "--- HISTORY_END ---\n"
+            )
+
+        # Add current batch
+        user_content_parts.append(
+            "以下为本次待处理的文章要点摘要：\n"
+            "--- ABSTRACT_BATCH_START ---\n\n"
+            f"{merged_summaries}\n\n"
+            "--- ABSTRACT_BATCH_END ---"
+        )
+
+        user_content = "\n".join(user_content_parts)
+
         try:
             completion = self.client.chat.completions.create(
                 model=self.stage2_model,
                 messages=[
                     {"role": "system", "content": SYSTEM_PROMPT},
-                    {
-                        "role": "user",
-                        "content": (
-                            "以下为若干篇文章的要点摘要（已按篇提炼）。\n"
-                            "请在不引入外部信息的前提下，按系统规范输出最终分类简报：\n\n"
-                            "--- ABSTRACT_BATCH_START ---\n\n" + merged_summaries + "\n\n--- ABSTRACT_BATCH_END ---"
-                        ),
-                    },
+                    {"role": "user", "content": user_content},
                 ],
-                temperature=0.2,
+                temperature=1.0,
             )
             digest = (completion.choices[0].message.content or "").strip()
             api_logger.debug(
